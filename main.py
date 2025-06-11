@@ -1,16 +1,17 @@
 import tkinter
-from customtkinter import filedialog 
 import customtkinter
-from pytube import YouTube, YouTube
-from pytube import Playlist
+from customtkinter import filedialog 
+# from pytubefix import YouTube, Playlist
 import re
+import subprocess
+import threading
 
 def startDownloadvideo():
     try:
-        print("yoyube video downloading started")
+        print("youtube video downloading started")
         ytLink=Link_video.get()
         print(ytLink)
-        ytObject=YouTube(ytLink,on_progress_callback=on_progress_tab1)
+        ytObject=YouTube(ytLink,on_progress_callback=on_progress_tab1,use_po_token=True)
         print(ytObject)
         streams = set()
 
@@ -32,29 +33,127 @@ def startDownloadvideo():
         # if int(res.replace("p", "")) > 1080:
         #     res = 1080
         # video=ytObject.streams.get_by_resolution(res)        
-    except:
+    except Exception as e:
+        print(f"Error: {e}")
         finishlabel_tab1.configure(text="Downloaded Error",text_color="red")
+def reset_ui_tab1():
+    # Clear the video URL entry
+    url_variable.set("")
+    # Reset progress bar and percentage
+    progper_tab1.configure(text="0%")
+    progressBar_tab1.set(0)
+    # Clear finished label
+    finishlabel_tab1.configure(text="")
+    # Optionally clear the folder path
+    folder_path_tab1.set("")
+    # Reset title label
+    title_1.configure(text="Insert Youtube Video URL", text_color="white")       
+    
+
+def get_video_title(ytlink):
+    command = [
+        "yt-dlp",
+        "--get-title",
+        ytlink
+    ]
+    result = subprocess.run(command, capture_output=True, text=True)
+    print (result.stdout)
+    return result.stdout.strip() if result.returncode == 0 else "Error retrieving title"    
         
+        
+def download_with_ytdlp() :
+    try:
+        # Build the yt-dlp command
+        ytLink=Link_video.get()
+        print(ytLink)
+        videotitle=get_video_title(ytLink)
+        download_path=folder_path_tab1.get()
+        print("Video Title:", videotitle)
+        title_1.configure(text=videotitle,text_color="white")
+        
+        
+        
+        command = [
+            "yt-dlp",
+            "--no-mtime",  # Add this option
+            "-P", download_path,
+            "-f", "bestvideo+bestaudio",
+            ytLink
+        ]
+        # Run the command
+        # result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        for line in result.stdout:
+            print(line, end="")  # For debugging
+            # Look for progress percentage in the output
+            if "%" in line:
+                import re
+                match = re.search(r'(\d{1,3}\.\d)%', line)
+                if match:
+                    percent = float(match.group(1))
+                    progper_tab1.configure(text=f"{int(percent)}%")
+                    progressBar_tab1.set(percent / 100)
+        result.wait()
+        if result.returncode == 0:
+            print("Download completed successfully.")
+            finishlabel_tab1.configure(text="Downloaded Video")
+            app.after(5000, reset_ui_tab1)
+            
+        else:
+            print("Error during download:", result.stderr)
+    except Exception as e:
+        print("Exception occurred:", e)
+        finishlabel_tab1.configure(text="Downloaded Error",text_color="red")
+    
+def download_with_ytdlp_threaded():
+    threading.Thread(target=download_with_ytdlp).start()
+    
+def download_playlist_with_ytdlp_threaded():
+    threading.Thread(target=startDownloadplaylist).start()
+    
+  
 def startDownloadplaylist():
     try:
-        pllink=Link_playlist.get()
-        pyObject=Playlist(pllink)
-        pyObject._video_regex=re.compile(r"\"url\":\"(/watch\?v=[\w-]*)")
-        playlist_links=pyObject.video_urls
-        print(playlist_links)
+        ytLink=Link_video.get()
+        print(ytLink)
+        videotitle=get_video_title(ytLink)
+        download_path=folder_path_tab1.get()
+        print("Video Title:", videotitle)
+        title_1.configure(text=videotitle,text_color="white")
         
-        for link in playlist_links:
-            print("Links:"+link)
-            vd_object=YouTube(link,on_progress_callback=on_progress_tab2)
-            vd=vd_object.streams.get_highest_resolution()
-            title_2.configure(text=vd.title,text_color="white")
-            vd.download(output_path=folder_path_tab2.get())
-            finishlabel_tab2.configure(text="Downloaded Video")
-            finishlabel_tab2.configure(text="")
-        finishlabel_tab2.configure(text="Downloaded full Playlist")
-               
-    except:
-        finishlabel_tab2.configure(text="Download Error",text_color="red")
+        
+        
+        command = [
+            "yt-dlp",
+            "--no-mtime",  # Add this option
+            "-P", download_path,
+            "-f", "bestvideo+bestaudio",
+            ytLink
+        ]
+        # Run the command
+        # result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        for line in result.stdout:
+            print(line, end="")  # For debugging
+            # Look for progress percentage in the output
+            if "%" in line:
+                import re
+                match = re.search(r'(\d{1,3}\.\d)%', line)
+                if match:
+                    percent = float(match.group(1))
+                    progper_tab1.configure(text=f"{int(percent)}%")
+                    progressBar_tab1.set(percent / 100)
+        result.wait()
+        if result.returncode == 0:
+            print("Download completed successfully.")
+            finishlabel_tab1.configure(text="Downloaded Video")
+            app.after(5000, reset_ui_tab1)
+            
+        else:
+            print("Error during download:", result.stderr)
+    except Exception as e:
+        print("Exception occurred:", e)
+        finishlabel_tab1.configure(text="Downloaded Error",text_color="red")
         
 def on_progress_tab1(stream,chunk,bytes_remaining):
     total_size=stream.filesize
@@ -191,7 +290,7 @@ file_path_tab2.pack(padx=10,pady=10)
 #download button
 download_tab1 = customtkinter.CTkButton(tab_1,
                                  text="Download",
-                                 command=startDownloadvideo,
+                                 command=download_with_ytdlp_threaded,
                                  width=200,
                                  height=32,
                                  border_width=0,
@@ -201,7 +300,7 @@ download_tab1.pack(padx=10,pady=10)
 
 download_tab2 = customtkinter.CTkButton(tab_2,
                                  text="Download",
-                                 command=startDownloadplaylist,
+                                 command=download_playlist_with_ytdlp_threaded,
                                  width=200,
                                  height=32,
                                  border_width=0,
