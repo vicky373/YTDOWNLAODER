@@ -6,48 +6,25 @@ import re
 import subprocess
 import threading
 
-def startDownloadvideo():
-    try:
-        print("youtube video downloading started")
-        ytLink=Link_video.get()
-        print(ytLink)
-        ytObject=YouTube(ytLink,on_progress_callback=on_progress_tab1,use_po_token=True)
-        print(ytObject)
-        streams = set()
 
-        for stream in ytObject.streams.filter(type="video"):  # Only look for video streams to avoid None values
-              streams.add(stream.resolution)
-        print(streams)
-        
-        print(ytObject.streams)
-        # for stream in ytObject.streams.filter(resolution="2160p"):
-        #     print(stream)
-        video=ytObject.streams.get_highest_resolution()
-        title_1.configure(text=video.title,text_color="white")
-        finishlabel_tab1.configure(text="")
-        video.download(output_path=folder_path_tab1.get())
-        finishlabel_tab1.configure(text="Downloaded Video")
-        # video=ytObject.streams.get_highest_resolution()
-        # res = ytObject.streams.itag_index()
-        # print(res)
-        # if int(res.replace("p", "")) > 1080:
-        #     res = 1080
-        # video=ytObject.streams.get_by_resolution(res)        
-    except Exception as e:
-        print(f"Error: {e}")
-        finishlabel_tab1.configure(text="Downloaded Error",text_color="red")
 def reset_ui_tab1():
     # Clear the video URL entry
     url_variable.set("")
+    playlist_variable.set("")
     # Reset progress bar and percentage
     progper_tab1.configure(text="0%")
+    progper_tab2.configure(text="0%")
     progressBar_tab1.set(0)
+    progressBar_tab2.set(0)
     # Clear finished label
     finishlabel_tab1.configure(text="")
+    finishlabel_tab2.configure(text="")
     # Optionally clear the folder path
     folder_path_tab1.set("")
+    folder_path_tab2.set("")
     # Reset title label
-    title_1.configure(text="Insert Youtube Video URL", text_color="white")       
+    title_1.configure(text="Insert Youtube Video URL", text_color="white")   
+    title_2.configure(text="Insert Youtube Playlist URL", text_color="white")     
     
 
 def get_video_title(ytlink):
@@ -87,7 +64,6 @@ def download_with_ytdlp() :
             print(line, end="")  # For debugging
             # Look for progress percentage in the output
             if "%" in line:
-                import re
                 match = re.search(r'(\d{1,3}\.\d)%', line)
                 if match:
                     percent = float(match.group(1))
@@ -114,12 +90,12 @@ def download_playlist_with_ytdlp_threaded():
   
 def startDownloadplaylist():
     try:
-        ytLink=Link_video.get()
+        ytLink=Link_playlist.get()
         print(ytLink)
         videotitle=get_video_title(ytLink)
-        download_path=folder_path_tab1.get()
-        print("Video Title:", videotitle)
-        title_1.configure(text=videotitle,text_color="white")
+        download_path=folder_path_tab2.get()
+        print("Playlit  Title:", videotitle)
+        title_2.configure(text=videotitle,text_color="white")
         
         
         
@@ -137,23 +113,22 @@ def startDownloadplaylist():
             print(line, end="")  # For debugging
             # Look for progress percentage in the output
             if "%" in line:
-                import re
                 match = re.search(r'(\d{1,3}\.\d)%', line)
                 if match:
                     percent = float(match.group(1))
-                    progper_tab1.configure(text=f"{int(percent)}%")
-                    progressBar_tab1.set(percent / 100)
+                    progper_tab2.configure(text=f"{int(percent)}%")
+                    progressBar_tab2.set(percent / 100)
         result.wait()
         if result.returncode == 0:
             print("Download completed successfully.")
-            finishlabel_tab1.configure(text="Downloaded Video")
+            finishlabel_tab2.configure(text="Downloaded playlist")
             app.after(5000, reset_ui_tab1)
             
         else:
             print("Error during download:", result.stderr)
     except Exception as e:
         print("Exception occurred:", e)
-        finishlabel_tab1.configure(text="Downloaded Error",text_color="red")
+        finishlabel_tab2.configure(text="Downloaded Error",text_color="red")
         
 def on_progress_tab1(stream,chunk,bytes_remaining):
     total_size=stream.filesize
@@ -180,7 +155,7 @@ customtkinter.set_appearance_mode("Dark")
 customtkinter.set_default_color_theme("green")
 
 def switch_event_tab1():
-    if switch_var_tab1.get() == "on":
+    if switch_var_tab1.get() == "off":
         customtkinter.set_appearance_mode("Light")
         customtkinter.set_default_color_theme("blue")
         switch_text_var_tab1.set("Light Mode")
@@ -190,7 +165,7 @@ def switch_event_tab1():
         customtkinter.set_default_color_theme("green")
         switch_text_var_tab1.set("Dark Mode")
 def switch_event_tab2():
-    if switch_var_tab2.get() == "on":
+    if switch_var_tab2.get() == "off":
         customtkinter.set_appearance_mode("Light")
         customtkinter.set_default_color_theme("blue")
         switch_text_var_tab2.set("Light Mode")
@@ -223,11 +198,11 @@ tab_1=tabview.add("Youtube Video")
 tab_2=tabview.add("Youtube Playlist")
 # appearance mode switching light/Dark
 
-switch_var_tab1= customtkinter.StringVar(value="off")
+switch_var_tab1= customtkinter.StringVar(value="on")
 switch_text_var_tab1=customtkinter.StringVar(value="Dark Mode")
 switch_tab1 = customtkinter.CTkSwitch(tab_1,command=switch_event_tab1,
                                  variable=switch_var_tab1, onvalue="on", offvalue="off",button_color="black",textvariable=switch_text_var_tab1)
-switch_var_tab2 = customtkinter.StringVar(value="off")
+switch_var_tab2 = customtkinter.StringVar(value="on")
 switch_text_var_tab2=customtkinter.StringVar(value="Dark Mode")
 switch_tab2 = customtkinter.CTkSwitch(tab_2,command=switch_event_tab2,
                                  variable=switch_var_tab2, onvalue="on", offvalue="off",button_color="black",textvariable=switch_text_var_tab2)
@@ -244,9 +219,9 @@ title_2.pack(padx=10,pady=10)
 
 
 url_variable=customtkinter.StringVar()
-Link_video = customtkinter.CTkEntry(tab_1,width=350,height=40,textvariable=url_variable)
+Link_video = customtkinter.CTkEntry(tab_1,width=450,height=40,textvariable=url_variable)
 playlist_variable=customtkinter.StringVar()
-Link_playlist = customtkinter.CTkEntry(tab_2,width=350,height=40,textvariable=playlist_variable)
+Link_playlist = customtkinter.CTkEntry(tab_2,width=450,height=40,textvariable=playlist_variable)
 Link_video.pack()
 Link_playlist.pack()
 
@@ -257,10 +232,10 @@ finishlabel_tab2=customtkinter.CTkLabel(tab_2,text="")
 finishlabel_tab2.pack()
 
 # Resolution Options
-option_list=["720p","480p","360p"]
-combobox_var= customtkinter.StringVar()
-combobox = customtkinter.CTkComboBox(app, values=option_list,variable=combobox_var)
-combobox.pack(padx=80,pady=10)
+# option_list=["720p","480p","360p"]
+# combobox_var= customtkinter.StringVar()
+# combobox = customtkinter.CTkComboBox(app, values=option_list,variable=combobox_var)
+# combobox.pack(padx=80,pady=10)
 
 #progress percentage
 progper_tab1=customtkinter.CTkLabel(tab_1,text="0%")
